@@ -1,0 +1,5 @@
+agent
+manager
+tests/test_queue
+**.swp
+manager.log
