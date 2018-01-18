@@ -19,7 +19,6 @@ static void final_agent(void);
 static void *send_thread(void *data);
 static void *recv_thread(void *data);
 static void *module_thread(void *data);
-static void *check_manager_thread(void *data);
 static void *time_thread(void *data);
 
 int running = 1;
@@ -46,7 +45,6 @@ queue_t *recv_queue;
 pthread_t send_thread_id;
 pthread_t recv_thread_id;
 pthread_t module_thread_ids[MODULE_NO];
-pthread_t check_manager_thread_id;
 pthread_t time_thread_id;
 
 int is_running()
@@ -65,14 +63,7 @@ int main(int argc, char **argv)
     time_t start_time;
     time(&start_time);
     while (running) {
-        nw_connect();
-        if (!nw_okay) {
-            sleep(1);
-        }
-        /* request connect */
-        nw_write("ACQ", 3);
-
-        while (nw_okay()) {
+        if (nw_okay()) {
             char *msg = queue_dequeue(recv_queue);
             if (msg) {
                 parse_msg(msg);
@@ -85,11 +76,10 @@ int main(int argc, char **argv)
                 pthread_cond_timedwait(&recv_cond,  &recv_lock, &timeout);
                 pthread_mutex_unlock(&recv_lock);
             }
-            usleep(10 * 1000);
         }
         usleep(10 * 1000);
-        nw_destroy();
     }
+
     time_t end_time;
     time(&end_time);
 
@@ -137,13 +127,6 @@ static void create_threads(void)
     else {
         printf("Send thread created\n");
     }
-    if (pthread_create(&check_manager_thread_id, NULL, check_manager_thread, NULL))
-    {
-        printf("Error creating check_manager thread\n");
-    }
-    else {
-        printf("Check_manager thread created\n");
-    }
     if (pthread_create(&time_thread_id, NULL, time_thread, NULL))
     {
         printf("Error creating time thread\n");
@@ -171,8 +154,6 @@ static void destroy_threads(void)
     }
     pthread_join(time_thread_id);
     printf("Time_thread destroyed\n");
-    pthread_join(check_manager_thread_id);
-    printf("Check_manager thread destroyed\n");
     pthread_join(send_thread_id);
     printf("Send thread destroyed\n");
     pthread_join(recv_thread_id);
@@ -227,26 +208,19 @@ static void *send_thread(void *data)
     }
 }
 
-static void *check_manager_thread(void *data)
-{
-    int iCount = 0;
-    while (running) {
-        iCount++;
-        if (iCount >= HEALTH_TIME) {
-            iCount = 0;
-            send_event("ZZZ");
-        }
-        usleep(1000 * 1000);
-    }
-}
-
 static void *time_thread(void *data)
 {
     int iCount = 0;
+    int iZZZCount = 0;
     while (running) {
-        iCount++;
-        if (iCount == 10) {
-            if (nw_okay()) {
+        if (nw_okay()) {
+            iZZZCount++;
+            if (iZZZCount >= HEALTH_TIME) {
+                iZZZCount = 0;
+                nw_write("ZZZ", 3);
+            }
+            iCount++;
+            if (iCount == 10) {
                 time_t curr;
                 time(&curr);
                 pthread_mutex_lock(&health_lock);
@@ -255,8 +229,15 @@ static void *time_thread(void *data)
                     nw_disconnect();
                 }
                 pthread_mutex_unlock(&health_lock);
+                iCount = 0;
             }
-            iCount = 0;
+        }
+        else {
+            nw_destroy();
+            nw_connect();
+            if (!nw_okay()) {
+                nw_write("ACQ", 3);
+            }
         }
         usleep(1000 * 1000);
     }
