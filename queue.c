@@ -50,17 +50,12 @@ int queue_enqueue(queue_t *q, const char *data)
 {
     if (!data || strnlen(data, QUEUE_NODE_SIZE) > QUEUE_NODE_SIZE)
         return -1;
-    //TODO: this is bug, not locked
-    while (is_full(q)) {
-        if (!nw_okay()) {
-            return -1;
-        }
-        else {
-            usleep(1 * 1000);//Busy
-        }
+    pthread_mutex_lock(&q->qlock);
+    if (is_full(q)) {
+        pthread_mutex_unlock(&q->qlock);
+        return -1;
     }
 
-    pthread_mutex_lock(&q->qlock);
     strncpy(q->nodes[q->rear].data, data, QUEUE_NODE_SIZE);
     q->rear++;
     if (q->rear == q->arr_size) q->rear = 0;

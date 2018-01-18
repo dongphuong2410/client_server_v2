@@ -27,6 +27,8 @@ time_t health_time;
 static unsigned long long event_cnt = 0;
 static pthread_mutex_t health_lock;
 static pthread_mutex_t module_lock;
+pthread_mutex_t send_lock;
+pthread_cond_t send_cond;
 
 static struct sigaction act;
 void sig_handler(int signal)
@@ -203,6 +205,7 @@ static void *send_thread(void *data)
         else {
             char *buff = NULL;
             while ((buff = queue_dequeue(send_queue))) {
+                pthread_cond_signal(&send_cond);
                 nw_write(buff, strnlen(buff, PACKET_LEN));
                 if (!nw_okay()) {
                     break;
@@ -288,6 +291,8 @@ static void create_mutex(void)
 {
     pthread_mutex_init(&health_lock, NULL);
     pthread_mutex_init(&module_lock, NULL);
+    pthread_mutex_init(&send_lock, NULL);
+    pthread_cond_init(&send_cond, NULL);
 }
 
 static void destroy_mutex(void)
