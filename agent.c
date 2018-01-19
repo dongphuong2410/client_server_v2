@@ -62,6 +62,7 @@ int main(int argc, char **argv)
     int iCount = 0;
     time_t start_time;
     time(&start_time);
+
     while (running) {
         if (nw_okay()) {
             char *msg = queue_dequeue(recv_queue);
@@ -77,7 +78,7 @@ int main(int argc, char **argv)
                 pthread_mutex_unlock(&recv_lock);
             }
         }
-        usleep(10 * 1000);
+        usleep(10000);
     }
 
     time_t end_time;
@@ -165,16 +166,16 @@ static void *recv_thread(void *data)
     static char buff[PACKET_LEN];
     while (running) {
         if (!nw_okay()) {
-            usleep(10 * 1000);
+            usleep(10000);
         }
         else {
             int bytes = nw_read(buff);
             if (bytes <= 0) {
-                usleep(101 * 1000);
+                usleep(101000);
             }
             else {
                 queue_enqueue(recv_queue, buff);
-                pthread_cond_signal(&send_cond);
+                pthread_cond_signal(&recv_cond);
             }
         }
     }
@@ -185,7 +186,7 @@ static void *send_thread(void *data)
     int iCount = 0;
     while (running) {
         if (!nw_okay) {
-            usleep(1000 * 1000);
+            usleep(1000000);
         }
         else {
             char *buff = NULL;
@@ -197,12 +198,12 @@ static void *send_thread(void *data)
                 }
                 iCount++;
                 if (iCount == 10000) {
-                    usleep(10 * 1000);
+                    usleep(10000);
                     iCount = 0;
                 }
             }
             if (!buff) {
-                usleep(10 * 1000);
+                usleep(10000);
             }
         }
     }
@@ -225,7 +226,7 @@ static void *time_thread(void *data)
                 time(&curr);
                 pthread_mutex_lock(&health_lock);
                 if (curr - health_time > HEALTH_TIME * MANAGER_RETRY) {
-                    printf("Manager not response for long time. Disconnect ...\n");
+                    printf("Manager not response for long time. Disconnect\n", (curr - health_time));
                     nw_disconnect();
                 }
                 pthread_mutex_unlock(&health_lock);
@@ -234,8 +235,9 @@ static void *time_thread(void *data)
         }
         else {
             nw_destroy();
+            pthread_cond_signal(&send_cond);
             nw_connect();
-            if (!nw_okay()) {
+            if (nw_okay()) {
                 nw_write("ACQ", 3);
             }
         }

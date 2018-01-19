@@ -1,6 +1,6 @@
 CC=gcc
-#CFLAGS=-ggdb -p -O0
-CFLAGS=-O2
+CFLAGS=-ggdb -O0
+#CFLAGS=-O2
 LDFLAGS=-lpthread
 
 all: agent manager

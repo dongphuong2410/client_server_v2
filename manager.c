@@ -50,7 +50,7 @@ int main(int argc, char **argv)
             print_help();
         }
         else {
-            printf("Receive : %s", command);
+            printf("Unknown command : %s", command);
         }
     }
 
@@ -63,12 +63,13 @@ static void *connection_handler(void *data)
 {
     char buff[PACKET_LEN];
     int *client_socket = (int *)data;
+    unsigned long long pkt_cnt = 0;
     while (!quit) {
         int bytes = recv(*client_socket, buff, PACKET_LEN, 0);
         if (bytes > 0) {
             char *ptr = buff;
             while (ptr - buff < bytes) {
-                mgrlog("Receive : %c%c%c\n", ptr[0], ptr[1], ptr[2]);
+                //mgrlog("Receive : %c%c%c\n", ptr[0], ptr[1], ptr[2]);
                 if (!strncmp(ptr, "ACQ", 3)) {
                     send(*client_socket, "ACK", 3, 0);
                     mgrlog("Send : %s\n", "ACK");
@@ -79,11 +80,15 @@ static void *connection_handler(void *data)
                         mgrlog("Send : %s\n", "ZZZ");
                     }
                 }
+                else if (!strncmp(ptr, "EVT", 3)) {
+                    pkt_cnt++;
+                }
                 ptr += 3;
             }
         }
         else {
             mgrlog("Connection close ..\n");
+            mgrlog("Events received : %llu\n", pkt_cnt);
             break;
         }
     }
