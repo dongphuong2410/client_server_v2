@@ -22,5 +22,7 @@ void send_event(const char *event)
         pthread_mutex_unlock(&send_lock);
         if (!nw_okay())
             break;
+        else
+            usleep(1000);
     }
 }
