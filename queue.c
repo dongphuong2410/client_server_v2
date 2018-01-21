@@ -16,6 +16,8 @@ struct _queue_t {
     int front;
     int rear;
     pthread_mutex_t qlock;
+    pthread_cond_t send_cond;
+    pthread_mutex_t send_lock;
 };
 
 static inline int is_full(queue_t *q);
@@ -34,6 +36,8 @@ queue_t *queue_init(int q_size)
         q = NULL;
     }
     pthread_mutex_init(&q->qlock, NULL);
+    pthread_cond_init(&q->send_cond, NULL);
+    pthread_mutex_init(&q->send_lock, NULL);
     return q;
 }
 
@@ -41,7 +45,9 @@ void queue_destroy(queue_t *q)
 {
     if (q ) {
         free(q->nodes);
+        pthread_cond_destroy(&q->send_cond);
         pthread_mutex_destroy(&q->qlock);
+        pthread_mutex_destroy(&q->send_lock);
     }
     free(q);
 }
@@ -75,6 +81,8 @@ char *queue_dequeue(queue_t *q)
     q->front++;
     if (q->front == q->arr_size) q->front = 0;
     pthread_mutex_unlock(&q->qlock);
+    if (was_full)
+        pthread_cond_signal(&q->send_cond);
     return ret;
 }
 
@@ -88,3 +96,12 @@ static inline int is_empty(queue_t *q)
     return (q->front == q->rear);
 }
 
+int queue_wait(queue_t *q)
+{
+    pthread_mutex_lock(&q->send_lock);
+    struct timespec timeout;
+    timeout.tv_sec = time(NULL) + 1;
+    timeout.tv_nsec = 0;
+    pthread_cond_timedwait(&q->send_cond,  &q->send_lock, &timeout);
+    pthread_mutex_unlock(&q->send_lock);
+}

@@ -30,8 +30,6 @@ int MODULE_SLEEP = 300;
 int ENCRYPT_LOOP = 100000;
 static pthread_mutex_t health_lock;
 static pthread_mutex_t module_lock;
-pthread_mutex_t send_lock;
-pthread_cond_t send_cond;
 pthread_mutex_t recv_lock;
 pthread_cond_t recv_cond;
 
@@ -203,7 +201,6 @@ static void *send_thread(void *data)
         else {
             char *buff = NULL;
             while ((buff = queue_dequeue(send_queue))) {
-                pthread_cond_signal(&send_cond);
                 nw_write(buff, strnlen(buff, PACKET_LEN));
                 if (!nw_okay()) {
                     break;
@@ -247,7 +244,6 @@ static void *time_thread(void *data)
         }
         else {
             nw_destroy();
-            pthread_cond_signal(&send_cond);
             nw_connect();
             if (nw_okay()) {
                 nw_write("ACQ", 3);
@@ -289,9 +285,7 @@ static void create_mutex(void)
 {
     pthread_mutex_init(&health_lock, NULL);
     pthread_mutex_init(&module_lock, NULL);
-    pthread_mutex_init(&send_lock, NULL);
     pthread_mutex_init(&recv_lock, NULL);
-    pthread_cond_init(&send_cond, NULL);
     pthread_cond_init(&recv_cond, NULL);
 }
 
@@ -299,8 +293,6 @@ static void destroy_mutex(void)
 {
     pthread_mutex_destroy(&health_lock);
     pthread_mutex_destroy(&module_lock);
-    pthread_mutex_destroy(&send_lock);
-    pthread_cond_destroy(&send_cond);
     pthread_mutex_destroy(&recv_lock);
     pthread_cond_destroy(&recv_cond);
 }

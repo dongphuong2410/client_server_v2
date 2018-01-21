@@ -27,4 +27,10 @@ int queue_enqueue(queue_t *q, const char *data);
  */
 char *queue_dequeue(queue_t *q);
 
+/**
+ * Wait until queue is ready to push data
+ * Return -1 on timeout, else 0
+ */
+int queue_wait(queue_t *q);
+
 #endif
