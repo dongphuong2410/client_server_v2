@@ -1,0 +1,10 @@
+#!/bin/bash
+
+for module_sleep in 50 100 300 700 1000 3000 5000;
+do
+    for encrypt_loop in 1000 5000 10000 15000 20000 50000 100000;
+    do
+        ./run $module_sleep $encrypt_loop
+    done;
+    sleep 10
+done

@@ -1,0 +1,44 @@
+#!/bin/bash
+
+#topp() (
+#    $* &>/dev/null &
+#    pid="$!"
+#    trap ':' INT
+#    echo 'CPU  MEM'
+#    while sleep 1; do ps --no-headers -o '%cpu,%mem' -p "$pid"; done
+#    kill "$pid"
+#)
+#topp sudo simul_v1/agent
+
+LOOP=10
+
+echo "MODULE_SLEEP = $1 ENCRYPT_LOOP = $2"
+echo "Simul_v1"
+sudo simul_v1/agent $1 $2 &> /dev/null &
+sleep 5
+sum=0
+for i in `seq 1 $LOOP` ;
+do
+    cpu=$(ps --no-headers -o '%cpu' -p $(pidof agent))
+    sum=$(echo $sum + $cpu | bc)
+    sleep 2
+done
+sudo kill $(pidof agent) &> /dev/null
+sleep 2
+echo "%CPU : $(echo $sum/$LOOP | bc)"
+echo "Throughput : $(tail -n 1 simul_v2/manager.log | awk '{print $3}') eps"
+
+echo "Simul_v2"
+sudo simul_v2/agent $1 $2 &> /dev/null &
+sleep 5
+sum=0
+for i in `seq 1 $LOOP` ;
+do
+    cpu=$(ps --no-headers -o '%cpu' -p $(pidof agent))
+    sum=$(echo $sum + $cpu | bc)
+    sleep 2
+done
+sudo kill $(pidof agent) &> /dev/null
+sleep 2
+echo "%CPU : $(echo $sum/$LOOP | bc)"
+echo "Throughput : $(tail -n 1 simul_v2/manager.log | awk '{print $3}') eps"
