@@ -5,6 +5,7 @@
 
 #include "event.h"
 #include "queue.h"
+#include "comm.h"
 
 extern queue_t *send_queue;
 extern pthread_mutex_t send_lock;

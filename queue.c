@@ -50,30 +50,31 @@ int queue_enqueue(queue_t *q, const char *data)
 {
     if (!data || strnlen(data, QUEUE_NODE_SIZE) > QUEUE_NODE_SIZE)
         return -1;
-    //pthread_mutex_lock(&q->qlock);
+    pthread_mutex_lock(&q->qlock);
     if (is_full(q)) {
-        //pthread_mutex_unlock(&q->qlock);
+        pthread_mutex_unlock(&q->qlock);
         return -1;
     }
 
     strncpy(q->nodes[q->rear].data, data, QUEUE_NODE_SIZE);
     q->rear++;
     if (q->rear == q->arr_size) q->rear = 0;
-    //pthread_mutex_unlock(&q->qlock);
+    pthread_mutex_unlock(&q->qlock);
     return 0;
 }
 
 char *queue_dequeue(queue_t *q)
 {
-    //pthread_mutex_lock(&q->qlock);
+    pthread_mutex_lock(&q->qlock);
     if (is_empty(q)) {
-        //pthread_mutex_unlock(&q->qlock);
+        pthread_mutex_unlock(&q->qlock);
         return NULL;
     }
+    int was_full = is_full(q);
     char *ret = q->nodes[q->front].data;
     q->front++;
     if (q->front == q->arr_size) q->front = 0;
-    //pthread_mutex_unlock(&q->qlock);
+    pthread_mutex_unlock(&q->qlock);
     return ret;
 }
 

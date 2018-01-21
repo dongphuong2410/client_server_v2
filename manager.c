@@ -20,11 +20,14 @@ int quit = 0;
 FILE *logfd;
 pthread_t network_thread;
 int reply_zzz = 1;
+time_t start_time;
+time_t end_time;
 
 int main(int argc, char **argv)
 {
     logfd = fopen("manager.log", "w+");
 
+    time(&start_time);
     /* Create task threads */
     thread_init();
 
@@ -88,7 +91,9 @@ static void *connection_handler(void *data)
         }
         else {
             mgrlog("Connection close ..\n");
-            mgrlog("Events received : %llu\n", pkt_cnt);
+            time(&end_time);
+            mgrlog("Events per second : %llu\n", pkt_cnt/(end_time - start_time));
+            mgrlog("Events : %llu\n", pkt_cnt);
             break;
         }
     }

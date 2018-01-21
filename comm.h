@@ -40,4 +40,6 @@ int nw_read(char *buff);
  */
 void nw_disconnect(void);
 
+int nw_encrypt(const char *buff);
+
 #endif

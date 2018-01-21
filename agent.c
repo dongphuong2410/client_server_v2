@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <string.h>
+#include <stdint.h>
+#include <sys/syscall.h>
 
 #include "comm.h"
 #include "queue.h"
@@ -23,7 +26,8 @@ static void *time_thread(void *data);
 
 int running = 1;
 time_t health_time;
-static unsigned long long event_cnt = 0;
+int MODULE_SLEEP = 300;
+int ENCRYPT_LOOP = 100000;
 static pthread_mutex_t health_lock;
 static pthread_mutex_t module_lock;
 pthread_mutex_t send_lock;
@@ -54,6 +58,11 @@ int is_running()
 
 int main(int argc, char **argv)
 {
+    if (argc == 3) {
+        MODULE_SLEEP = atoi(argv[1]);
+        ENCRYPT_LOOP = atoi(argv[2]);
+    }
+    srand(time(NULL));
     create_mutex();
     handle_signal();
     create_queue();
@@ -84,7 +93,6 @@ int main(int argc, char **argv)
     time_t end_time;
     time(&end_time);
 
-    printf("time %u eps %llu\n", end_time - start_time, event_cnt / (end_time - start_time));
     destroy_threads();
     destroy_queue();
     destroy_mutex();
@@ -163,6 +171,8 @@ static void destroy_threads(void)
 
 static void *recv_thread(void *data)
 {
+    pid_t tid = syscall(SYS_gettid);
+    printf("Recv thread pid %u\n", tid);
     static char buff[PACKET_LEN];
     while (running) {
         if (!nw_okay()) {
@@ -183,6 +193,8 @@ static void *recv_thread(void *data)
 
 static void *send_thread(void *data)
 {
+    pid_t tid = syscall(SYS_gettid);
+    printf("Send thread pid %u\n", tid);
     int iCount = 0;
     while (running) {
         if (!nw_okay) {
@@ -226,7 +238,7 @@ static void *time_thread(void *data)
                 time(&curr);
                 pthread_mutex_lock(&health_lock);
                 if (curr - health_time > HEALTH_TIME * MANAGER_RETRY) {
-                    printf("Manager not response for long time. Disconnect\n", (curr - health_time));
+                    printf("Manager not response for long time. Disconnect\n");
                     nw_disconnect();
                 }
                 pthread_mutex_unlock(&health_lock);
@@ -247,10 +259,9 @@ static void *time_thread(void *data)
 
 static void *module_thread(void *data)
 {
+    pid_t tid = syscall(SYS_gettid);
+    printf("Module thread pid %u\n", tid);
     while (running) {
-        //pthread_mutex_lock(&module_lock);
-        //event_cnt++;
-        //pthread_mutex_unlock(&module_lock);
         send_event("EVT");
         usleep(MODULE_SLEEP);
     }
